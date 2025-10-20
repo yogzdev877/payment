@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ZEN HOSTING</title>
+  <style>
+    body {
+      background: linear-gradient(135deg, #000 30%, #001f2b 100%);
+      color: cyan;
+      font-family: "Segoe UI", Arial, sans-serif;
+      text-align: center;
+    }
+    .hidden { display: none; }
+    .container {
+      max-width: 420px;
+      margin: 40px auto;
+      padding: 20px;
+      border: 1px solid cyan;
+      border-radius: 20px;
+      background: rgba(0, 0, 0, 0.7);
+      box-shadow: 0 0 25px cyan;
+      animation: fadeIn 0.6s ease;
+    }
+    input, select, button {
+      width: 90%;
+      margin: 10px auto;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid cyan;
+      background: #111;
+      color: cyan;
+      font-size: 14px;
+      transition: 0.3s;
+    }
+    input:focus, select:focus {
+      outline: none;
+      box-shadow: 0 0 12px cyan;
+    }
+    button {
+      cursor: pointer;
+      font-weight: bold;
+      box-shadow: 0 0 15px cyan;
+      background: linear-gradient(135deg, #00ffff, #007d7d);
+      color: #000;
+      transition: transform 0.2s;
+    }
+    button:hover {
+      transform: scale(1.05);
+    }
+    .qr-img {
+      width: 90%;
+      margin: 15px auto;
+      border: 1px solid cyan;
+      border-radius: 12px;
+      box-shadow: 0 0 20px cyan;
+    }
+
+    /* ==== Receipt (Struk) ==== */
+    #receiptPage {
+      text-align: center;
+    }
+    .success-icon {
+      width: 80px;
+      height: 80px;
+      margin: 15px auto;
+      border-radius: 50%;
+      background: #00ffaa33;
+      border: 3px solid #00ffaa;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: pop 0.6s ease;
+    }
+    .success-icon::before {
+      content: "✔";
+      font-size: 40px;
+      color: #00ffaa;
+      font-weight: bold;
+    }
+    .receipt-box {
+      margin-top: 15px;
+      padding: 15px;
+      border-radius: 15px;
+      background: rgba(0,255,255,0.05);
+      border: 1px solid rgba(0,255,255,0.3);
+      text-align: left;
+      font-size: 14px;
+      color: #bff;
+    }
+    .receipt-box p {
+      margin: 6px 0;
+    }
+
+    footer {
+      margin-top: 20px;
+      font-size: 12px;
+      color: #0ff;
+      opacity: 0.7;
+    }
+
+    /* Animasi */
+    @keyframes fadeIn {
+      from {opacity: 0; transform: translateY(10px);}
+      to {opacity: 1; transform: translateY(0);}
+    }
+    @keyframes pop {
+      0% { transform: scale(0.5); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Halaman Welcome -->
+  <div id="welcome" class="container">
+    <h2>Welcome to Payment</h2>
+    <h3>ZEN HOSTING</h3>
+    <button onclick="gotoForm()">Lanjut Pembayaran</button>
+  </div>
+
+  <!-- Halaman Form -->
+  <div id="formPage" class="container hidden">
+    <h2>Form Pembayaran</h2>
+    <h3>ZEN HOSTING</h3>
+    <input type="text" id="senderName" placeholder="Nama Pengirim" required>
+    <select id="method" required>
+      <option value="">-- Pilih Metode Pembayaran --</option>
+      <option value="dana">Dana</option>
+      <option value="ovo">Ovo</option>
+      <option value="qris">QRIS</option>
+    </select>
+
+    <div id="details" class="hidden">
+      <p id="accountName"></p>
+      <p id="accountNumber"></p>
+      <img id="qrImg" class="qr-img hidden" alt="QRIS Code">
+    </div>
+
+    <input type="file" id="proofFile" accept="image/*">
+    <button onclick="submitPayment()">Kirim</button>
+  </div>
+
+  <!-- Struk -->
+  <div id="receiptPage" class="container hidden">
+    <div class="success-icon"></div>
+    <h3>Pembayaran Berhasil!</h3>
+    <p>Terima kasih, pembayaran Anda sedang diproses.</p>
+    
+    <div class="receipt-box" id="receiptDetails">
+      <!-- Info struk akan diisi via JS -->
+    </div>
+
+    <button onclick="gotoHome()">Kembali ke Home</button>
+  </div>
+
+  <footer>
+    © 2025 ZEN HOSTING. All rights reserved.
+  </footer>
+
+  <script>
+    // ================= CONFIG TELEGRAM =================
+    const BOT_TOKEN = "8259895511:AAHzH_6F5q9U-0JU1eYf1mJ0b8sAdQGJAvQ";   
+    const CHAT_ID  =  "7350385831";     
+
+    const methods = {
+      dana:    {name: "Zakyy", number: "085150519465"},
+      ovo:   {name: "Zakyy", number: "085150519465"},
+      qris:    {name: "Zakyy", number: "-", qr: "https://img1.pixhost.to/images/9552/653246351_uploaded_image.jpg"}
+    };
+
+    let proofBase64 = "";
+
+    function gotoForm() {
+      document.getElementById("welcome").classList.add("hidden");
+      document.getElementById("formPage").classList.remove("hidden");
+    }
+
+    function gotoHome() {
+      document.getElementById("receiptPage").classList.add("hidden");
+      document.getElementById("welcome").classList.remove("hidden");
+    }
+
+    // tampilkan detail pembayaran sesuai metode
+    document.getElementById("method").addEventListener("change", function(){
+      const val = this.value;
+      if(!val) return;
+      const det = methods[val];
+      document.getElementById("details").classList.remove("hidden");
+      document.getElementById("accountName").innerText = "Atas Nama: " + det.name;
+      document.getElementById("accountNumber").innerText = 
+        (val === "qris") ? "" : "No Rek/HP: " + det.number;
+      if(val === "qris"){
+        document.getElementById("qrImg").src = det.qr;
+        document.getElementById("qrImg").classList.remove("hidden");
+      } else {
+        document.getElementById("qrImg").classList.add("hidden");
+      }
+    });
+
+    // ============ Image compression ============
+    document.getElementById("proofFile").addEventListener("change", function () {
+      const file = this.files[0];
+      if (!file) return;
+      compressImage(file, 800, 0.7, (b64) => { proofBase64 = b64; });
+    });
+
+    function compressImage(file, maxSize = 800, quality = 0.7, cb){
+      const reader = new FileReader();
+      reader.onload = e => {
+        const img = new Image();
+        img.onload = () => {
+          let { width, height } = img;
+          if (width > height && width > maxSize){ height *= maxSize / width; width = maxSize; }
+          else if (height > width && height > maxSize){ width *= maxSize / height; height = maxSize; }
+          const canvas = document.createElement("canvas");
+          canvas.width = width; canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, width, height);
+          cb(canvas.toDataURL("image/jpeg", quality));
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // ============ Submit ke Telegram ============
+    async function submitPayment() {
+      const name = document.getElementById("senderName").value;
+      const methodKey = document.getElementById("method").value;
+      if(!name || !methodKey){
+        alert("Isi semua data dulu!");
+        return;
+      }
+      const det = methods[methodKey];
+
+      let text = `💳 *Payment Baru*\n👤 Nama: ${name}\n💰 Metode: ${methodKey}\n🔢 Rek/No: ${det.number}\n👤 Atas Nama: ${det.name}`;
+
+      // kirim text
+      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: CHAT_ID,
+          text: text,
+          parse_mode: "Markdown"
+        })
+      });
+
+      // kalau ada bukti, kirim gambar
+      if(proofBase64){
+        let blob = await (await fetch(proofBase64)).blob();
+        let formData = new FormData();
+        formData.append("chat_id", CHAT_ID);
+        formData.append("photo", blob, "bukti.jpg");
+        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+          method: "POST",
+          body: formData
+        });
+      }
+
+      // tampilkan struk
+      document.getElementById("formPage").classList.add("hidden");
+      document.getElementById("receiptPage").classList.remove("hidden");
+
+      // isi detail struk
+      document.getElementById("receiptDetails").innerHTML = `
+        <p><b>Nama Pengirim:</b> ${name}</p>
+        <p><b>Metode:</b> ${methodKey.toUpperCase()}</p>
+        <p><b>Atas Nama:</b> ${det.name}</p>
+        ${methodKey !== "qris" ? `<p><b>No Rek/HP:</b> ${det.number}</p>` : ""}
+        <p><b>Status:</b> <span style="color:lime">Sedang Diproses ✅</span></p>
+      `;
+    }
+  </script>
+</body>
+  </html>
